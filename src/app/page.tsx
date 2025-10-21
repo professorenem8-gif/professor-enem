@@ -65,49 +65,144 @@ interface SimulationResult {
   isPaid: boolean
 }
 
-// Dados mockados
-const mockQuestions: Question[] = [
-  {
-    id: '1',
-    subject: 'Português',
-    area: 'Linguagens e Códigos',
-    question: 'Qual figura de linguagem está presente na frase: "O vento sussurrava segredos"?',
-    options: ['Metáfora', 'Personificação', 'Hipérbole', 'Ironia', 'Antítese'],
-    correctAnswer: 1,
-    explanation: 'A personificação atribui características humanas (sussurrar) a elementos não humanos (vento).',
-    difficulty: 'medium'
-  },
-  {
-    id: '2',
-    subject: 'Matemática',
-    area: 'Matemática',
-    question: 'Se f(x) = 2x + 3, qual o valor de f(5)?',
-    options: ['10', '11', '12', '13', '14'],
-    correctAnswer: 3,
-    explanation: 'f(5) = 2(5) + 3 = 10 + 3 = 13',
-    difficulty: 'easy'
-  },
-  {
-    id: '3',
-    subject: 'História',
-    area: 'Ciências Humanas',
-    question: 'A Revolução Industrial teve início em qual país?',
-    options: ['França', 'Alemanha', 'Inglaterra', 'Estados Unidos', 'Itália'],
-    correctAnswer: 2,
-    explanation: 'A Revolução Industrial começou na Inglaterra no século XVIII.',
-    difficulty: 'easy'
-  },
-  {
-    id: '4',
-    subject: 'Química',
-    area: 'Ciências da Natureza',
-    question: 'Qual é a fórmula química da água?',
-    options: ['H2O', 'CO2', 'NaCl', 'CH4', 'O2'],
-    correctAnswer: 0,
-    explanation: 'A água é formada por dois átomos de hidrogênio e um de oxigênio (H2O).',
-    difficulty: 'easy'
+interface DailyChallenge {
+  completed: boolean
+  questions: Question[]
+  timeLimit: number
+  currentQuestion: number
+  answers: number[]
+  startTime: Date | null
+  timeRemaining: number
+}
+
+// Dados mockados - 45 questões por área
+const generateQuestions = (area: string, count: number): Question[] => {
+  const subjects = {
+    'Linguagens e Códigos': ['Português', 'Literatura', 'Inglês', 'Espanhol', 'Artes'],
+    'Matemática': ['Álgebra', 'Geometria', 'Estatística', 'Probabilidade', 'Trigonometria'],
+    'Ciências Humanas': ['História', 'Geografia', 'Filosofia', 'Sociologia', 'Política'],
+    'Ciências da Natureza': ['Física', 'Química', 'Biologia', 'Ecologia', 'Genética']
   }
-]
+
+  const questionTemplates = {
+    'Linguagens e Códigos': [
+      'Qual figura de linguagem está presente na frase: "O vento sussurrava segredos"?',
+      'Identifique a função sintática do termo destacado na oração.',
+      'Qual o período literário da obra "Dom Casmurro"?',
+      'Complete the sentence: "If I ___ you, I would study more."',
+      'Qual movimento artístico caracteriza-se pelo uso de cores puras?'
+    ],
+    'Matemática': [
+      'Se f(x) = 2x + 3, qual o valor de f(5)?',
+      'Calcule a área de um triângulo com base 8 e altura 6.',
+      'Qual a probabilidade de sair cara em 3 lançamentos de moeda?',
+      'Resolva a equação: 2x + 5 = 15',
+      'Calcule o valor de sen(30°)'
+    ],
+    'Ciências Humanas': [
+      'A Revolução Industrial teve início em qual país?',
+      'Qual filósofo defendia o "Cogito ergo sum"?',
+      'O que caracteriza o clima tropical?',
+      'Qual foi a principal causa da Primeira Guerra Mundial?',
+      'O que é democracia representativa?'
+    ],
+    'Ciências da Natureza': [
+      'Qual é a fórmula química da água?',
+      'Qual a primeira lei de Newton?',
+      'O que são células procariontes?',
+      'Qual gás é responsável pelo efeito estufa?',
+      'O que é fotossíntese?'
+    ]
+  }
+
+  const optionsTemplates = {
+    'Linguagens e Códigos': [
+      ['Metáfora', 'Personificação', 'Hipérbole', 'Ironia', 'Antítese'],
+      ['Sujeito', 'Predicado', 'Objeto direto', 'Adjunto adverbial', 'Complemento nominal'],
+      ['Romantismo', 'Realismo', 'Naturalismo', 'Parnasianismo', 'Simbolismo'],
+      ['was', 'were', 'am', 'is', 'are'],
+      ['Impressionismo', 'Cubismo', 'Surrealismo', 'Expressionismo', 'Fauvismo']
+    ],
+    'Matemática': [
+      ['10', '11', '12', '13', '14'],
+      ['24', '28', '32', '36', '40'],
+      ['1/8', '1/4', '3/8', '1/2', '5/8'],
+      ['3', '4', '5', '6', '7'],
+      ['0,5', '0,6', '0,7', '0,8', '0,9']
+    ],
+    'Ciências Humanas': [
+      ['França', 'Alemanha', 'Inglaterra', 'Estados Unidos', 'Itália'],
+      ['Platão', 'Aristóteles', 'Descartes', 'Kant', 'Nietzsche'],
+      ['Baixa umidade', 'Altas temperaturas', 'Chuvas regulares', 'Todas as anteriores', 'Nenhuma das anteriores'],
+      ['Imperialismo', 'Nacionalismo', 'Militarismo', 'Sistema de alianças', 'Todas as anteriores'],
+      ['Voto direto', 'Representantes eleitos', 'Participação popular', 'Todas as anteriores', 'Apenas A e B']
+    ],
+    'Ciências da Natureza': [
+      ['H2O', 'CO2', 'NaCl', 'CH4', 'O2'],
+      ['Inércia', 'Ação e reação', 'Força = massa × aceleração', 'Conservação da energia', 'Gravitação'],
+      ['Sem núcleo', 'Com núcleo', 'Sem parede celular', 'Com mitocôndrias', 'Multicelulares'],
+      ['Oxigênio', 'Nitrogênio', 'Dióxido de carbono', 'Hidrogênio', 'Hélio'],
+      ['Respiração das plantas', 'Produção de energia', 'Síntese de glicose', 'Absorção de água', 'Reprodução']
+    ]
+  }
+
+  const explanations = {
+    'Linguagens e Códigos': [
+      'A personificação atribui características humanas (sussurrar) a elementos não humanos (vento).',
+      'O objeto direto completa o sentido do verbo transitivo direto.',
+      'Dom Casmurro foi escrito por Machado de Assis durante o Realismo.',
+      'Em conditional sentences tipo 2, usa-se "were" para todas as pessoas.',
+      'O Fauvismo caracteriza-se pelo uso de cores puras e vibrantes.'
+    ],
+    'Matemática': [
+      'f(5) = 2(5) + 3 = 10 + 3 = 13',
+      'Área = (base × altura) / 2 = (8 × 6) / 2 = 24',
+      'P(3 caras) = (1/2)³ = 1/8',
+      '2x + 5 = 15 → 2x = 10 → x = 5',
+      'sen(30°) = 1/2 = 0,5'
+    ],
+    'Ciências Humanas': [
+      'A Revolução Industrial começou na Inglaterra no século XVIII.',
+      'René Descartes formulou o "Penso, logo existo".',
+      'O clima tropical caracteriza-se por altas temperaturas e chuvas regulares.',
+      'O imperialismo, nacionalismo, militarismo e sistema de alianças causaram a guerra.',
+      'Na democracia representativa, o povo elege representantes para governar.'
+    ],
+    'Ciências da Natureza': [
+      'A água é formada por dois átomos de hidrogênio e um de oxigênio (H2O).',
+      'A primeira lei de Newton é o princípio da inércia.',
+      'Células procariontes são aquelas que não possuem núcleo definido.',
+      'O dióxido de carbono (CO2) é o principal gás do efeito estufa.',
+      'Fotossíntese é o processo de síntese de glicose usando luz solar.'
+    ]
+  }
+
+  const questions: Question[] = []
+  const areaSubjects = subjects[area as keyof typeof subjects] || ['Geral']
+  const areaQuestions = questionTemplates[area as keyof typeof questionTemplates] || ['Questão padrão?']
+  const areaOptions = optionsTemplates[area as keyof typeof optionsTemplates] || [['A', 'B', 'C', 'D', 'E']]
+  const areaExplanations = explanations[area as keyof typeof explanations] || ['Explicação padrão.']
+
+  for (let i = 0; i < count; i++) {
+    const subjectIndex = i % areaSubjects.length
+    const questionIndex = i % areaQuestions.length
+    const optionIndex = i % areaOptions.length
+    const explanationIndex = i % areaExplanations.length
+
+    questions.push({
+      id: `${area}-${i + 1}`,
+      subject: areaSubjects[subjectIndex],
+      area,
+      question: `${i + 1}. ${areaQuestions[questionIndex]}`,
+      options: areaOptions[optionIndex],
+      correctAnswer: Math.floor(Math.random() * 5), // Resposta aleatória para demo
+      explanation: areaExplanations[explanationIndex],
+      difficulty: ['easy', 'medium', 'hard'][Math.floor(Math.random() * 3)] as 'easy' | 'medium' | 'hard'
+    })
+  }
+
+  return questions
+}
 
 const areas = [
   {
@@ -147,68 +242,185 @@ export default function ProfessorEnemApp() {
     level: 12,
     achievements: ['Primeira Vitória', 'Sequência de 5', 'Matemático', 'Linguista']
   })
-  const [dailyChallenge, setDailyChallenge] = useState({
+  
+  // Estado do Desafio Diário
+  const [dailyChallenge, setDailyChallenge] = useState<DailyChallenge>({
     completed: false,
-    questions: mockQuestions.slice(0, 5),
-    timeLimit: 300 // 5 minutos
+    questions: generateQuestions('Linguagens e Códigos', 5).slice(0, 5),
+    timeLimit: 300, // 5 minutos
+    currentQuestion: 0,
+    answers: [],
+    startTime: null,
+    timeRemaining: 300
   })
+
   const [currentSimulation, setCurrentSimulation] = useState<{
     area: string
     questions: Question[]
     currentQuestion: number
     answers: number[]
     startTime: Date
+    isCompleted: boolean
   } | null>(null)
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [simulationResults, setSimulationResults] = useState<SimulationResult[]>([])
+  const [completedSimulation, setCompletedSimulation] = useState<SimulationResult | null>(null)
 
-  // Função para iniciar simulado
+  // Timer do desafio diário
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    
+    if (dailyChallenge.startTime && !dailyChallenge.completed && dailyChallenge.timeRemaining > 0) {
+      interval = setInterval(() => {
+        setDailyChallenge(prev => {
+          const newTimeRemaining = prev.timeRemaining - 1
+          if (newTimeRemaining <= 0) {
+            // Tempo esgotado - finalizar desafio
+            return {
+              ...prev,
+              completed: true,
+              timeRemaining: 0
+            }
+          }
+          return {
+            ...prev,
+            timeRemaining: newTimeRemaining
+          }
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [dailyChallenge.startTime, dailyChallenge.completed, dailyChallenge.timeRemaining])
+
+  // Função para iniciar desafio diário
+  const startDailyChallenge = () => {
+    setDailyChallenge(prev => ({
+      ...prev,
+      startTime: new Date(),
+      currentQuestion: 0,
+      answers: [],
+      timeRemaining: 300
+    }))
+    setCurrentView('dailyChallenge')
+  }
+
+  // Função para responder questão do desafio diário
+  const answerDailyChallengeQuestion = (answerIndex: number) => {
+    setDailyChallenge(prev => {
+      const newAnswers = [...prev.answers, answerIndex]
+      
+      if (prev.currentQuestion < prev.questions.length - 1) {
+        // Próxima questão
+        return {
+          ...prev,
+          currentQuestion: prev.currentQuestion + 1,
+          answers: newAnswers
+        }
+      } else {
+        // Desafio concluído
+        const score = newAnswers.reduce((acc, answer, index) => {
+          return acc + (answer === prev.questions[index].correctAnswer ? 1 : 0)
+        }, 0)
+        
+        // Adicionar pontos ao usuário
+        setUserStats(prevStats => ({
+          ...prevStats,
+          points: prevStats.points + (score * 10), // 10 pontos por acerto
+          totalQuestions: prevStats.totalQuestions + 5,
+          correctAnswers: prevStats.correctAnswers + score
+        }))
+
+        return {
+          ...prev,
+          completed: true,
+          answers: newAnswers
+        }
+      }
+    })
+  }
+
+  // Função para iniciar simulado (45 questões)
   const startSimulation = (area: string) => {
-    const areaQuestions = mockQuestions.filter(q => q.area === area)
+    const areaQuestions = generateQuestions(area, 45) // 45 questões por simulado
     setCurrentSimulation({
       area,
       questions: areaQuestions,
       currentQuestion: 0,
       answers: [],
-      startTime: new Date()
+      startTime: new Date(),
+      isCompleted: false
     })
     setCurrentView('simulation')
   }
 
-  // Função para responder questão
+  // Função para responder questão do simulado
   const answerQuestion = (answerIndex: number) => {
     if (!currentSimulation) return
 
     const newAnswers = [...currentSimulation.answers, answerIndex]
     
     if (currentSimulation.currentQuestion < currentSimulation.questions.length - 1) {
+      // Continuar para próxima questão
       setCurrentSimulation({
         ...currentSimulation,
         currentQuestion: currentSimulation.currentQuestion + 1,
         answers: newAnswers
       })
     } else {
-      // Finalizar simulado
-      const endTime = new Date()
-      const timeSpent = (endTime.getTime() - currentSimulation.startTime.getTime()) / 1000
-      const score = newAnswers.reduce((acc, answer, index) => {
-        return acc + (answer === currentSimulation.questions[index].correctAnswer ? 1 : 0)
-      }, 0)
+      // TODAS AS 45 QUESTÕES RESPONDIDAS - MARCAR COMO COMPLETADO
+      setCurrentSimulation({
+        ...currentSimulation,
+        answers: newAnswers,
+        isCompleted: true
+      })
+    }
+  }
 
-      const result: SimulationResult = {
-        id: Date.now().toString(),
-        area: currentSimulation.area,
-        questions: currentSimulation.questions,
-        userAnswers: newAnswers,
-        score,
-        timeSpent,
-        date: new Date(),
-        isPaid: false
-      }
+  // Função para finalizar simulado e mostrar pagamento
+  const finishSimulation = () => {
+    if (!currentSimulation || !currentSimulation.isCompleted) return
 
-      setSimulationResults([...simulationResults, result])
-      setCurrentSimulation(null)
-      setShowPaymentDialog(true)
+    const endTime = new Date()
+    const timeSpent = (endTime.getTime() - currentSimulation.startTime.getTime()) / 1000
+    const score = currentSimulation.answers.reduce((acc, answer, index) => {
+      return acc + (answer === currentSimulation.questions[index].correctAnswer ? 1 : 0)
+    }, 0)
+
+    const result: SimulationResult = {
+      id: Date.now().toString(),
+      area: currentSimulation.area,
+      questions: currentSimulation.questions,
+      userAnswers: currentSimulation.answers,
+      score,
+      timeSpent,
+      date: new Date(),
+      isPaid: false
+    }
+
+    setSimulationResults([...simulationResults, result])
+    setCompletedSimulation(result)
+    setCurrentSimulation(null)
+    setCurrentView('home')
+    
+    // MOSTRAR PAGAMENTO APENAS APÓS FINALIZAR
+    setShowPaymentDialog(true)
+  }
+
+  // Função para processar pagamento
+  const processPayment = () => {
+    if (completedSimulation) {
+      const updatedResult = { ...completedSimulation, isPaid: true }
+      setSimulationResults(prev => 
+        prev.map(result => 
+          result.id === completedSimulation.id ? updatedResult : result
+        )
+      )
+      setCompletedSimulation(updatedResult)
+      setShowPaymentDialog(false)
+      setCurrentView('results')
     }
   }
 
@@ -307,6 +519,7 @@ export default function ProfessorEnemApp() {
               <Button 
                 className="bg-white text-purple-700 hover:bg-white/90"
                 disabled={dailyChallenge.completed}
+                onClick={startDailyChallenge}
               >
                 {dailyChallenge.completed ? (
                   <>
@@ -507,12 +720,181 @@ export default function ProfessorEnemApp() {
     </div>
   )
 
+  // Componente do Desafio Diário
+  const DailyChallengeScreen = () => {
+    if (dailyChallenge.completed) {
+      const score = dailyChallenge.answers.reduce((acc, answer, index) => {
+        return acc + (answer === dailyChallenge.questions[index].correctAnswer ? 1 : 0)
+      }, 0)
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900">
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+              <CardContent className="p-8 text-center">
+                <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-white mb-2">Desafio Diário Concluído!</h2>
+                <p className="text-purple-200 mb-6">Parabéns! Você completou o desafio de hoje.</p>
+                
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-yellow-400">{score}</p>
+                    <p className="text-purple-200 text-sm">Acertos</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-yellow-400">{Math.round((score / 5) * 100)}%</p>
+                    <p className="text-purple-200 text-sm">Aproveitamento</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-yellow-400">+{score * 10}</p>
+                    <p className="text-purple-200 text-sm">Pontos</p>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={() => setCurrentView('home')}
+                  className="bg-yellow-400 text-purple-900 hover:bg-yellow-500"
+                >
+                  Voltar ao Menu
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )
+    }
+
+    const currentQ = dailyChallenge.questions[dailyChallenge.currentQuestion]
+    const progress = ((dailyChallenge.currentQuestion + 1) / dailyChallenge.questions.length) * 100
+    const minutes = Math.floor(dailyChallenge.timeRemaining / 60)
+    const seconds = dailyChallenge.timeRemaining % 60
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          {/* Header do Desafio */}
+          <Card className="mb-6 bg-white/10 backdrop-blur-sm border-white/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Desafio Diário</h2>
+                  <p className="text-purple-200">Questão {dailyChallenge.currentQuestion + 1} de {dailyChallenge.questions.length}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-400">
+                      {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+                    </div>
+                    <p className="text-purple-200 text-sm">Tempo</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setCurrentView('home')}
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    Sair
+                  </Button>
+                </div>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* Questão */}
+          <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+            <CardContent className="p-6">
+              <div className="mb-6">
+                <Badge className="mb-4 bg-yellow-400 text-purple-900">{currentQ.subject}</Badge>
+                <h3 className="text-lg font-semibold text-white mb-4">{currentQ.question}</h3>
+              </div>
+
+              <div className="space-y-3">
+                {currentQ.options.map((option, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="w-full text-left justify-start p-4 h-auto border-white/20 text-white hover:bg-yellow-400 hover:text-purple-900 transition-all"
+                    onClick={() => answerDailyChallengeQuestion(index)}
+                  >
+                    <span className="font-semibold mr-3">{String.fromCharCode(65 + index)})</span>
+                    {option}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   // Componente de Simulação
   const SimulationScreen = () => {
     if (!currentSimulation) return null
 
     const currentQ = currentSimulation.questions[currentSimulation.currentQuestion]
     const progress = ((currentSimulation.currentQuestion + 1) / currentSimulation.questions.length) * 100
+
+    // Se o simulado foi completado (45 questões), mostrar tela de finalização
+    if (currentSimulation.isCompleted) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900">
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+              <CardContent className="p-8 text-center">
+                <div className="mb-6">
+                  <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
+                  <h2 className="text-2xl font-bold text-white mb-2">Simulado Concluído!</h2>
+                  <p className="text-blue-200">Você respondeu todas as {currentSimulation.questions.length} questões de {currentSimulation.area}</p>
+                </div>
+
+                <div className="bg-white/10 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Resumo Básico:</h3>
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-yellow-400">{currentSimulation.questions.length}</p>
+                      <p className="text-blue-200 text-sm">Questões Respondidas</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-yellow-400">{Math.round((Date.now() - currentSimulation.startTime.getTime()) / 60000)}min</p>
+                      <p className="text-blue-200 text-sm">Tempo Total</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-yellow-400/20 to-yellow-500/20 border border-yellow-400/30 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-2">🔒 Resultado Detalhado Bloqueado</h3>
+                  <p className="text-blue-200 text-sm mb-4">
+                    Para ver sua pontuação, gabarito completo, explicações detalhadas e recomendações personalizadas, finalize o simulado.
+                  </p>
+                  <p className="text-yellow-400 font-semibold">Custo: R$ 5,00 via Pix</p>
+                </div>
+
+                <div className="flex gap-4 justify-center">
+                  <Button 
+                    onClick={() => {
+                      setCurrentSimulation(null)
+                      setCurrentView('home')
+                    }}
+                    variant="outline"
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    Voltar ao Menu
+                  </Button>
+                  <Button 
+                    onClick={finishSimulation}
+                    className="bg-yellow-400 text-blue-900 hover:bg-yellow-500"
+                  >
+                    <Trophy className="w-4 h-4 mr-2" />
+                    Finalizar e Ver Resultado
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900">
@@ -568,7 +950,86 @@ export default function ProfessorEnemApp() {
     )
   }
 
-  // Dialog de Pagamento
+  // Tela de Resultados (após pagamento)
+  const ResultsScreen = () => {
+    if (!completedSimulation || !completedSimulation.isPaid) return null
+
+    const percentage = Math.round((completedSimulation.score / completedSimulation.questions.length) * 100)
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Trophy className="w-6 h-6 text-yellow-400" />
+                Resultado Detalhado - {completedSimulation.area}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-6 mb-6">
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-yellow-400">{completedSimulation.score}</p>
+                  <p className="text-blue-200">Acertos</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-yellow-400">{percentage}%</p>
+                  <p className="text-blue-200">Aproveitamento</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-yellow-400">{Math.round(completedSimulation.timeSpent / 60)}min</p>
+                  <p className="text-blue-200">Tempo Total</p>
+                </div>
+              </div>
+
+              {/* Gabarito Detalhado */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold text-white">Gabarito e Explicações:</h4>
+                {completedSimulation.questions.map((question, index) => {
+                  const userAnswer = completedSimulation.userAnswers[index]
+                  const isCorrect = userAnswer === question.correctAnswer
+                  
+                  return (
+                    <div key={index} className="p-4 bg-white/10 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold text-white">Questão {index + 1}</span>
+                        {isCorrect ? (
+                          <CheckCircle className="w-5 h-5 text-green-400" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-red-400" />
+                        )}
+                      </div>
+                      <p className="text-blue-200 text-sm mb-2">{question.question}</p>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-white">Sua resposta: <span className={isCorrect ? 'text-green-400' : 'text-red-400'}>{String.fromCharCode(65 + userAnswer)}) {question.options[userAnswer]}</span></p>
+                        </div>
+                        <div>
+                          <p className="text-white">Resposta correta: <span className="text-green-400">{String.fromCharCode(65 + question.correctAnswer)}) {question.options[question.correctAnswer]}</span></p>
+                        </div>
+                      </div>
+                      <p className="text-blue-200 text-sm mt-2"><strong>Explicação:</strong> {question.explanation}</p>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="mt-6 text-center">
+                <Button 
+                  onClick={() => setCurrentView('home')}
+                  className="bg-yellow-400 text-blue-900 hover:bg-yellow-500"
+                >
+                  Voltar ao Menu
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Dialog de Pagamento (APENAS APÓS FINALIZAR 45 QUESTÕES)
   const PaymentDialog = () => (
     <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
       <DialogContent className="max-w-md">
@@ -578,7 +1039,7 @@ export default function ProfessorEnemApp() {
             Simulado Concluído!
           </DialogTitle>
           <DialogDescription>
-            Parabéns! Você finalizou o simulado.
+            Parabéns! Você finalizou o simulado de 45 questões.
           </DialogDescription>
         </DialogHeader>
         
@@ -609,7 +1070,10 @@ export default function ProfessorEnemApp() {
           </div>
 
           <div className="space-y-2">
-            <Button className="w-full bg-green-600 hover:bg-green-700">
+            <Button 
+              className="w-full bg-green-600 hover:bg-green-700"
+              onClick={processPayment}
+            >
               <CheckCircle className="w-4 h-4 mr-2" />
               Já Paguei - Verificar Pagamento
             </Button>
@@ -621,7 +1085,7 @@ export default function ProfessorEnemApp() {
           <div className="text-xs text-gray-500 text-center">
             Após o pagamento, você terá acesso a:
             <ul className="mt-2 space-y-1">
-              <li>✓ Gabarito completo das questões</li>
+              <li>✓ Gabarito completo das 45 questões</li>
               <li>✓ Desempenho detalhado por área</li>
               <li>✓ Tempo médio por questão</li>
               <li>✓ Recomendações personalizadas</li>
@@ -635,7 +1099,9 @@ export default function ProfessorEnemApp() {
   return (
     <div className="min-h-screen">
       {currentView === 'home' && <HomeScreen />}
+      {currentView === 'dailyChallenge' && <DailyChallengeScreen />}
       {currentView === 'simulation' && <SimulationScreen />}
+      {currentView === 'results' && <ResultsScreen />}
       <PaymentDialog />
     </div>
   )

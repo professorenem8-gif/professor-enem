@@ -1,5 +1,6 @@
 // Sistema de Pagamento Pix - Professor ENEM
 // Integração com Mercado Pago API
+// COBRANÇA APENAS AO FINAL DOS SIMULADOS
 
 export interface PixPayment {
   id: string
@@ -12,6 +13,7 @@ export interface PixPayment {
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
   createdAt: Date
   expiresAt: Date
+  simulationId: string // Vincula pagamento ao simulado específico
 }
 
 export interface PaymentConfig {
@@ -28,12 +30,14 @@ const PAYMENT_CONFIG: PaymentConfig = {
 }
 
 /**
- * Cria um pagamento Pix usando a API do Mercado Pago
- * @param amount Valor em reais (ex: 5.00)
+ * Cria um pagamento Pix APENAS após completar simulado
+ * @param simulationId ID do simulado completado
+ * @param amount Valor fixo de R$ 5,00
  * @param description Descrição do pagamento
  * @returns Dados do pagamento Pix
  */
-export async function createPixPayment(
+export async function createPixPaymentForSimulation(
+  simulationId: string,
   amount: number = 5.00,
   description: string = 'Professor ENEM - Correção de Simulado'
 ): Promise<PixPayment> {
@@ -41,7 +45,7 @@ export async function createPixPayment(
     // Configuração da requisição para API do Mercado Pago
     const paymentData = {
       transaction_amount: amount,
-      description: description,
+      description: `${description} - Simulado #${simulationId}`,
       payment_method_id: 'pix',
       payer: {
         email: 'estudante@professorenem.com',
@@ -51,7 +55,9 @@ export async function createPixPayment(
       notification_url: PAYMENT_CONFIG.webhookUrl,
       metadata: {
         app: 'professor-enem',
-        type: 'simulado-correction'
+        type: 'simulado-correction',
+        simulation_id: simulationId,
+        trigger: 'simulation_completed' // Indica que pagamento é após completar
       }
     }
 
@@ -60,7 +66,7 @@ export async function createPixPayment(
       headers: {
         'Authorization': `Bearer ${PAYMENT_CONFIG.mercadoPagoAccessToken}`,
         'Content-Type': 'application/json',
-        'X-Idempotency-Key': `payment-${Date.now()}-${Math.random()}`
+        'X-Idempotency-Key': `simulation-${simulationId}-${Date.now()}`
       },
       body: JSON.stringify(paymentData)
     })
@@ -81,26 +87,28 @@ export async function createPixPayment(
       pixKey: PAYMENT_CONFIG.pixKey,
       qrCode: pixData?.qr_code || '',
       qrCodeBase64: pixData?.qr_code_base64 || '',
-      copyPasteCode: pixData?.qr_code || generateMockPixCode(),
+      copyPasteCode: pixData?.qr_code || generateMockPixCode(simulationId),
       status: 'pending',
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 30 minutos
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutos
+      simulationId: simulationId
     }
   } catch (error) {
     console.error('Erro ao criar pagamento Pix:', error)
     
     // Fallback com dados mockados para desenvolvimento
     return {
-      id: `mock-${Date.now()}`,
+      id: `mock-${simulationId}-${Date.now()}`,
       amount: amount,
       description: description,
       pixKey: PAYMENT_CONFIG.pixKey,
       qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=pix-mock',
       qrCodeBase64: '',
-      copyPasteCode: generateMockPixCode(),
+      copyPasteCode: generateMockPixCode(simulationId),
       status: 'pending',
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000)
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+      simulationId: simulationId
     }
   }
 }
@@ -133,13 +141,14 @@ export async function checkPaymentStatus(paymentId: string): Promise<string> {
 
 /**
  * Gera um código Pix mockado para desenvolvimento
+ * @param simulationId ID do simulado para rastreamento
  */
-function generateMockPixCode(): string {
+function generateMockPixCode(simulationId: string): string {
   const pixKey = PAYMENT_CONFIG.pixKey
   const amount = '5.00'
   
-  // Formato simplificado do código Pix (EMV)
-  return `00020126580014br.gov.bcb.pix0136${pixKey}5204000053039865802BR5925Professor ENEM Simulados6009SAO PAULO62070503***6304ABCD`
+  // Formato simplificado do código Pix (EMV) com referência ao simulado
+  return `00020126580014br.gov.bcb.pix0136${pixKey}5204000053039865802BR5925Professor ENEM Simulados6009SAO PAULO62070503${simulationId.slice(-3)}6304ABCD`
 }
 
 /**
@@ -153,7 +162,7 @@ export async function processWebhook(webhookData: any) {
       const status = await checkPaymentStatus(paymentId)
       
       if (status === 'approved') {
-        // Liberar acesso ao resultado do simulado
+        // Liberar acesso ao resultado do simulado específico
         await unlockSimulationResult(paymentId)
       }
     }
@@ -172,12 +181,72 @@ async function unlockSimulationResult(paymentId: string) {
   // 2. Marcar o resultado como "pago" no banco de dados
   // 3. Enviar notificação para o usuário
   // 4. Registrar a transação
+  // 5. Liberar gabarito, explicações e análise detalhada
   
-  console.log(`Resultado liberado para pagamento: ${paymentId}`)
+  console.log(`Resultado do simulado liberado para pagamento: ${paymentId}`)
 }
 
-// Instruções de configuração para o desenvolvedor
+/**
+ * Valida se simulado foi completado antes de permitir pagamento
+ * @param simulationId ID do simulado
+ * @returns true se simulado foi completado
+ */
+export function validateSimulationCompleted(simulationId: string): boolean {
+  // Implementar validação no banco de dados
+  // Verificar se todas as questões foram respondidas
+  // Verificar se tempo de conclusão é válido
+  return true // Placeholder
+}
+
+/**
+ * Bloqueia acesso aos resultados até pagamento ser aprovado
+ * @param simulationId ID do simulado
+ * @returns dados básicos (sem gabarito) ou completos (com gabarito)
+ */
+export function getSimulationResults(simulationId: string, isPaid: boolean) {
+  if (!isPaid) {
+    return {
+      message: "Para ver o resultado completo e as correções das suas respostas, pague apenas R$ 5,00 via Pix.",
+      basicStats: {
+        questionsAnswered: true,
+        timeSpent: true,
+        score: false, // Oculto até pagamento
+        percentage: false, // Oculto até pagamento
+      },
+      detailedResults: false,
+      gabarito: false,
+      explanations: false,
+      recommendations: false
+    }
+  }
+
+  return {
+    message: "Resultado completo liberado!",
+    basicStats: {
+      questionsAnswered: true,
+      timeSpent: true,
+      score: true,
+      percentage: true,
+    },
+    detailedResults: true,
+    gabarito: true,
+    explanations: true,
+    recommendations: true
+  }
+}
+
+// Instruções de configuração atualizadas
 export const SETUP_INSTRUCTIONS = {
+  paymentFlow: {
+    title: "Fluxo de Pagamento - Apenas ao Final",
+    steps: [
+      "1. Usuário inicia simulado GRATUITAMENTE",
+      "2. Usuário responde todas as questões SEM COBRANÇA",
+      "3. AO FINALIZAR simulado, sistema mostra tela de pagamento",
+      "4. Pagamento de R$ 5,00 libera resultado completo",
+      "5. Sem pagamento = acesso bloqueado aos resultados detalhados"
+    ]
+  },
   mercadoPago: {
     title: "Configuração do Mercado Pago",
     steps: [
